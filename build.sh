@@ -22,15 +22,15 @@ flutter_rust_bridge_codegen create $PROJECT_NAME
 cd $PROJECT_NAME
 cd rust
 
-# Create the libraries
-cargo new --lib data_core
-cargo new --lib uniffi_bridge
-
 # Create flutter_bridge directory
 mkdir -p flutter_bridge
 
 # Move everything except flutter_bridge to flutter_bridge
 find . -maxdepth 1 ! -name . ! -name flutter_bridge -exec mv {} flutter_bridge \;
+
+# Create the libraries
+cargo new --lib data_core
+cargo new --lib uniffi_bridge
 
 # Create .cargo directory and config in uniffi_bridge
 mkdir -p uniffi_bridge/.cargo
