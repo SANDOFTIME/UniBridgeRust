@@ -1,3 +1,7 @@
+安装flutter_rust_bridge_codegen
+```
+cargo install flutter_rust_bridge_codegen
+```
 在build.gradle中添加
 ``` kotlin
 sourceSets {
