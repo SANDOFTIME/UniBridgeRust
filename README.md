@@ -2,6 +2,10 @@
 ```
 cargo install flutter_rust_bridge_codegen
 ```
+安装cargo-ndk
+```
+cargo install cargo-ndk
+```
 在build.gradle中添加
 ``` kotlin
 sourceSets {
