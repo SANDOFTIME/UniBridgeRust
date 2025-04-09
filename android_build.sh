@@ -7,7 +7,7 @@ RUST_PROJECT_PATH="."
 # UDL 文件路径（相对于 Rust 项目路径）
 UDL_FILE="src/data_core.udl"
 # 生成的库名称（不带 lib 前缀和 .so 后缀）
-LIB_NAME="data_core"
+LIB_NAME="uniffi_bridge"
 # Android 项目路径
 ANDROID_PROJECT_PATH="../../android"
 # Android jniLibs 路径（相对于 Android 项目路径）
@@ -23,12 +23,59 @@ echo "=== 开始构建和部署过程 ==="
 # 确保工作目录
 cd "$(dirname "$0")"
 
+# 0. 确保所有目标平台都已安装
+echo "=== 步骤 0: 确保所有目标平台已安装 ==="
+
+# 函数：根据 ABI 获取对应的 Rust 目标
+get_rust_target() {
+    local abi=$1
+    case "$abi" in
+        "arm64-v8a")
+            echo "aarch64-linux-android"
+            ;;
+        "armeabi-v7a")
+            echo "armv7-linux-androideabi"
+            ;;
+        "x86")
+            echo "i686-linux-android"
+            ;;
+        "x86_64")
+            echo "x86_64-linux-android"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# 检查并安装所有需要的目标
+for ABI in "${ANDROID_ABIS[@]}"; do
+  TARGET=$(get_rust_target "$ABI")
+  if [ -z "$TARGET" ]; then
+    echo "错误: 未知的 ABI: $ABI"
+    exit 1
+  fi
+  
+  echo "检查目标平台 $TARGET..."
+  if ! rustup target list --installed | grep -q "$TARGET"; then
+    echo "安装目标平台 $TARGET..."
+    rustup target add "$TARGET"
+    if [ $? -ne 0 ]; then
+      echo "错误: 无法安装目标平台 $TARGET"
+      exit 1
+    fi
+    echo "目标平台 $TARGET 安装成功！"
+  else
+    echo "目标平台 $TARGET 已安装。"
+  fi
+done
+
 # 1. 使用 cargo-ndk 构建 Rust 库
 echo "=== 步骤 1: 使用 cargo-ndk 构建 Rust 库 ==="
 cd "$RUST_PROJECT_PATH"
 
 # 检查是否安装了 cargo-ndk
-if ! command -v cargo ndk &> /dev/null; then
+if ! command -v cargo-ndk &> /dev/null; then
     echo "错误: cargo-ndk 未安装。请执行 'cargo install cargo-ndk' 安装它。"
     exit 1
 fi
@@ -58,7 +105,7 @@ TEMP_BINDINGS_DIR="out"
 mkdir -p "$TEMP_BINDINGS_DIR"
 
 # 使用 uniffi-bindgen 生成 Kotlin 绑定
-cargo run --bin uniffi-bindgen generate --library target/aarch64-linux-android/release/libdata_core.so --language kotlin --out-dir "$TEMP_BINDINGS_DIR"
+cargo run --bin uniffi-bindgen generate --library target/aarch64-linux-android/release/lib$LIB_NAME.so --language kotlin --out-dir "$TEMP_BINDINGS_DIR"
 if [ $? -ne 0 ]; then
     echo "Kotlin 绑定文件生成失败！"
     exit 1
@@ -77,24 +124,7 @@ for ABI in "${ANDROID_ABIS[@]}"; do
     mkdir -p "$TARGET_DIR"
     
     # 根据 ABI 确定 Rust 目标三元组
-    case "$ABI" in
-        "arm64-v8a")
-            RUST_TARGET="aarch64-linux-android"
-            ;;
-        "armeabi-v7a")
-            RUST_TARGET="armv7-linux-androideabi"
-            ;;
-        "x86")
-            RUST_TARGET="i686-linux-android"
-            ;;
-        "x86_64")
-            RUST_TARGET="x86_64-linux-android"
-            ;;
-        *)
-            echo "未知的 ABI: $ABI"
-            continue
-            ;;
-    esac
+    RUST_TARGET=$(get_rust_target "$ABI")
     
     # 复制 .so 文件
     SO_FILE="$RUST_PROJECT_PATH/target/$RUST_TARGET/release/lib$LIB_NAME.so"

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-PROJECT_NAME="data_core"
+PROJECT_NAME="uniffi_bridge"
 OUTPUT_DIR="out"
 DEST="$OUTPUT_DIR/$PROJECT_NAME.xcframework"
 ENV="release"
